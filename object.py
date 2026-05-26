@@ -7,6 +7,39 @@ from .collection import (
 )
 
 
+def get_active_mesh_object(context: bpy.types.Context) -> bpy.types.Object:
+    """Get the active mesh object.
+
+    Args:
+        context: Current Blender context.
+
+    Returns:
+        The active mesh object.
+
+    Raises:
+        RuntimeError: If there is no active object or it is not a mesh.
+    """
+    obj = context.active_object
+    if obj is None:
+        raise RuntimeError("No active object.")
+    if obj.type != "MESH":
+        raise RuntimeError("Active object must be a mesh.")
+    return obj
+
+
+def ensure_object_mode(context: bpy.types.Context) -> None:
+    """Switch the active object to Object Mode if needed.
+
+    Args:
+        context: Current Blender context.
+
+    Returns:
+        None.
+    """
+    if context.object is not None and context.object.mode != "OBJECT":
+        bpy.ops.object.mode_set(mode="OBJECT")
+
+
 def ensure_object_visible(obj: bpy.types.Object) -> None:
     """
     Ensures that the specified object is visible in the view layer, along with its parent collections.
