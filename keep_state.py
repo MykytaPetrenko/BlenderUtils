@@ -26,9 +26,11 @@ class EditorState:
     vl_collection_exclude_states: Optional[Dict[str, bool]] = None
     selected_objects: List[str] = field(default_factory=list)
     active_object_name: Optional[str] = None
+    active_vertex_group_indices: Dict[str, int] = field(default_factory=dict)
     restore_mode_enabled: bool = True
     restore_selection_enabled: bool = True
     restore_visibility_enabled: bool = True
+    restore_active_vertex_group_enabled: bool = True
 
     def restore_state(
         self,
@@ -57,6 +59,9 @@ class EditorState:
         if self.restore_selection_enabled:
             self._restore_active_object(active)
             self._restore_selected_objects(selected)
+
+        if self.restore_active_vertex_group_enabled:
+            self._restore_active_vertex_groups()
 
         if self.restore_mode_enabled and bpy.context.view_layer.objects.active and self.mode not in {None, "OBJECT"}:
             bpy.ops.object.mode_set(mode=self.mode)
@@ -92,12 +97,19 @@ class EditorState:
                 except RuntimeError:
                     pass
 
+    def _restore_active_vertex_groups(self) -> None:
+        for obj_name, active_index in self.active_vertex_group_indices.items():
+            obj = bpy.data.objects.get(obj_name)
+            if obj is not None and hasattr(obj, "vertex_groups") and len(obj.vertex_groups) > 0:
+                obj.vertex_groups.active_index = min(max(0, active_index), len(obj.vertex_groups) - 1)
+
     @staticmethod
     def capture_current_state(
         *,
         restore_mode: bool = True,
         restore_selection: bool = True,
         restore_visibility: bool = True,
+        restore_active_vertex_group: bool = True,
     ) -> "EditorState":
         current_object = bpy.context.object
         current_active_object = bpy.context.view_layer.objects.active
@@ -112,7 +124,13 @@ class EditorState:
             vl_collection_exclude_states=get_view_layer_collections_exclude() if restore_visibility else None,
             selected_objects=[obj.name for obj in bpy.context.selected_objects] if restore_selection else [],
             active_object_name=current_active_object.name if restore_selection and current_active_object else None,
+            active_vertex_group_indices={
+                obj.name: obj.vertex_groups.active_index
+                for obj in bpy.data.objects
+                if restore_active_vertex_group and obj.type == "MESH" and hasattr(obj, "vertex_groups")
+            },
             restore_mode_enabled=restore_mode,
             restore_selection_enabled=restore_selection,
             restore_visibility_enabled=restore_visibility,
+            restore_active_vertex_group_enabled=restore_active_vertex_group,
         )
