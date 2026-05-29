@@ -1,9 +1,25 @@
 from __future__ import annotations
 
-from typing import Iterable
+from typing import Iterable, List, Sequence
 
 import bpy
 from mathutils import Vector
+
+
+def shape_key_coordinates_flat(shape_key: bpy.types.ShapeKey) -> List[float]:
+    coordinates = [0.0] * (len(shape_key.data) * 3)
+    shape_key.data.foreach_get("co", coordinates)
+    return coordinates
+
+
+def write_shape_key_coordinates_flat(
+    shape_key: bpy.types.ShapeKey,
+    coordinates: Sequence[float],
+) -> None:
+    if getattr(shape_key, "lock_shape", False):
+        raise RuntimeError(f"Shape key is locked: {shape_key.name}")
+
+    shape_key.data.foreach_set("co", coordinates)
 
 
 def write_shape_key_coordinates(
@@ -11,12 +27,9 @@ def write_shape_key_coordinates(
     coordinates: Iterable[Vector],
 ) -> None:
     """Batch write coordinates to a shape key."""
-    if getattr(shape_key, "lock_shape", False):
-        raise RuntimeError(f"Shape key is locked: {shape_key.name}")
-
     flat_coordinates = [
         component
         for coordinate in coordinates
         for component in (coordinate.x, coordinate.y, coordinate.z)
     ]
-    shape_key.data.foreach_set("co", flat_coordinates)
+    write_shape_key_coordinates_flat(shape_key, flat_coordinates)
