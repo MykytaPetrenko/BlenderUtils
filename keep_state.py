@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import traceback
 from dataclasses import dataclass, field
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import bpy
 
@@ -27,10 +27,12 @@ class EditorState:
     selected_objects: List[str] = field(default_factory=list)
     active_object_name: Optional[str] = None
     active_vertex_group_indices: Dict[str, int] = field(default_factory=dict)
+    mesh_select_mode: Optional[Tuple[bool, bool, bool]] = None
     restore_mode_enabled: bool = True
     restore_selection_enabled: bool = True
     restore_visibility_enabled: bool = True
     restore_active_vertex_group_enabled: bool = True
+    restore_mesh_select_mode_enabled: bool = True
 
     def restore_state(
         self,
@@ -65,6 +67,9 @@ class EditorState:
 
         if self.restore_mode_enabled and bpy.context.view_layer.objects.active and self.mode not in {None, "OBJECT"}:
             bpy.ops.object.mode_set(mode=self.mode)
+
+        if self.restore_mesh_select_mode_enabled and self.mesh_select_mode is not None:
+            bpy.context.tool_settings.mesh_select_mode = self.mesh_select_mode
 
     def try_restore(
         self,
@@ -110,6 +115,7 @@ class EditorState:
         restore_selection: bool = True,
         restore_visibility: bool = True,
         restore_active_vertex_group: bool = True,
+        restore_mesh_select_mode: bool = True,
     ) -> "EditorState":
         current_object = bpy.context.object
         current_active_object = bpy.context.view_layer.objects.active
@@ -129,8 +135,14 @@ class EditorState:
                 for obj in bpy.data.objects
                 if restore_active_vertex_group and obj.type == "MESH" and hasattr(obj, "vertex_groups")
             },
+            mesh_select_mode=(
+                tuple(bpy.context.tool_settings.mesh_select_mode)
+                if restore_mesh_select_mode
+                else None
+            ),
             restore_mode_enabled=restore_mode,
             restore_selection_enabled=restore_selection,
             restore_visibility_enabled=restore_visibility,
             restore_active_vertex_group_enabled=restore_active_vertex_group,
+            restore_mesh_select_mode_enabled=restore_mesh_select_mode,
         )
